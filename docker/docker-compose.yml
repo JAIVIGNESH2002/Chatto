@@ -1,0 +1,32 @@
+# @format
+
+version: "3.9"
+
+services:
+  redis:
+    image: redis:latest
+    container_name: qr_chat_redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+
+  api:
+    build:
+      context: ../
+      dockerfile: docker/Dockerfile
+    container_name: qr_chat_api
+    command: uvicorn main:app --host 0.0.0.0 --port 8000 --reload --app-dir /app
+    volumes:
+      - ../:/app
+    ports:
+      - "8000:8000"
+    depends_on:
+      - redis
+    environment:
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      SESSION_TTL_SECONDS: 43200 # 12 hours
+
+volumes:
+  redis_data:
