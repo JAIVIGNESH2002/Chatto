@@ -1,0 +1,8 @@
+fastapi==0.111.1
+uvicorn[standard]==0.23.2
+redis==5.3.1
+pydantic==1.10.13
+qrcode==7.4.2
+pillow
+cerebras-cloud-sdk
+sentence-transformers
