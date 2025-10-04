@@ -35,7 +35,7 @@ def fetch_memories(user_id: str):
     Fetch all saved memories for a user based on user id
     """
     memories = get_memories(user_id)
-    print(f"Memories : {memories}")
+    print(f"Memories length: {len(memories)}")
     return {"user_id": user_id, "memories": memories}
 
 @router.put("/memory/edit")

@@ -27,6 +27,7 @@ import {
   Check,
   RefreshCcw,
 } from "lucide-react";
+import { useUser } from "@clerk/nextjs";
 
 interface Memory {
   id: string;
@@ -143,7 +144,9 @@ export function SlateTab() {
   const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
   const skipAutoRef = useRef(false);
 
-  // --- translate (enrich flag controls whether host is enriched) ---
+  const { user, isSignedIn } = useUser();
+  const userId = user?.id;
+  // --- translate ---
   const translate = async (
     text: string,
     enrich: boolean = false,
@@ -164,6 +167,7 @@ export function SlateTab() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          user_id: userId,
           text,
           source_lang: source,
           target_lang: target,
@@ -207,7 +211,6 @@ export function SlateTab() {
     setInput("");
   };
 
-  // debounced auto-translate (translate-only, does not update source)
   useEffect(() => {
     if (!showOutput || !sourceContent.trim()) return;
     if (skipAutoRef.current) {
@@ -221,10 +224,8 @@ export function SlateTab() {
     return () => {
       if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sourceContent]);
 
-  // presets handlers
   const handlePresetKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === "Enter" && presetInput.trim()) {
       e.preventDefault();
@@ -242,33 +243,29 @@ export function SlateTab() {
     await translate(sourceContent, true, true, newApplied);
   };
 
-  // Save current sourceContent to memory
   const saveToMemory = async () => {
+    if (!sourceContent.trim()) return;
     try {
       const res = await fetch("http://localhost:8000/api/v1/memory/save", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ user_id: "123", message: sourceContent }),
+        body: JSON.stringify({ user_id: userId, message: sourceContent }),
       });
       const data = await res.json();
-      if (data.status === "success") {
-        alert("Saved to memory ✅");
-      } else {
-        alert("Failed to save to memory");
-      }
+      if (data.status === "success") alert("Saved to memory ✅");
+      else alert("Failed to save to memory");
     } catch {
       alert("Error saving memory");
     }
   };
 
-  // memory edit/delete handlers that call backend endpoints
   const handleMemoryEdit = async (id: string, newMessage: string) => {
     try {
       const res = await fetch("http://localhost:8000/api/v1/memory/edit", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          user_id: "123",
+          user_id: userId,
           memory_id: id,
           new_message: newMessage,
         }),
@@ -283,8 +280,7 @@ export function SlateTab() {
         alert("Edit failed");
         return false;
       }
-    } catch (err) {
-      console.error(err);
+    } catch {
       alert("Edit failed");
       return false;
     }
@@ -295,7 +291,7 @@ export function SlateTab() {
       const res = await fetch("http://localhost:8000/api/v1/memory/delete", {
         method: "DELETE",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ user_id: "123", memory_id: id }),
+        body: JSON.stringify({ user_id: userId, memory_id: id }),
       });
       const data = await res.json();
       if (data.status === "success") {
@@ -305,251 +301,233 @@ export function SlateTab() {
         alert("Delete failed");
         return false;
       }
-    } catch (err) {
-      console.error(err);
+    } catch {
       alert("Delete failed");
       return false;
     }
   };
 
   return (
-    <>
-      <div className="p-4 space-y-4 pb-20">
-        {/* Language selectors */}
-        <div className="flex gap-3">
-          <Select value={source} onValueChange={setSource}>
-            <SelectTrigger className="w-[150px]">
-              <SelectValue placeholder="From" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="english">English</SelectItem>
-              <SelectItem value="french">French</SelectItem>
-              <SelectItem value="spanish">Spanish</SelectItem>
-              <SelectItem value="german">German</SelectItem>
-              <SelectItem value="chinese">Chinese</SelectItem>
-            </SelectContent>
-          </Select>
+    <div className="p-4 space-y-4 pb-20">
+      {/* Language selectors */}
+      <div className="flex gap-3">
+        <Select value={source} onValueChange={setSource}>
+          <SelectTrigger className="w-[150px]">
+            <SelectValue placeholder="From" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="english">English</SelectItem>
+            <SelectItem value="french">French</SelectItem>
+            <SelectItem value="spanish">Spanish</SelectItem>
+            <SelectItem value="german">German</SelectItem>
+            <SelectItem value="chinese">Chinese</SelectItem>
+          </SelectContent>
+        </Select>
 
-          <Select value={target} onValueChange={setTarget}>
-            <SelectTrigger className="w-[150px]">
-              <SelectValue placeholder="To" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="english">English</SelectItem>
-              <SelectItem value="french">French</SelectItem>
-              <SelectItem value="spanish">Spanish</SelectItem>
-              <SelectItem value="german">German</SelectItem>
-              <SelectItem value="chinese">Chinese</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-        {/* Info message if source and target are the same */}
-        {source === target && source !== "" && target !== "" && (
-          <p className="text-sm text-yellow-700">
-            ⚠️ You are trying to translate to your own language, and the
-            translation may not be exact.
-          </p>
-        )}
-        {/* Input Box */}
-        <div className="flex gap-2">
-          <Input
-            placeholder="Type your message..."
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && handleSend()}
-          />
-          <Button onClick={handleSend} disabled={loading}>
-            {loading ? (
-              <Loader2 className="w-4 h-4 animate-spin mr-2" />
-            ) : (
-              <Send className="w-5 h-5" />
-            )}
-          </Button>
-        </div>
-
-        {/* Floating preset chips (pre-send) */}
-        {presets.length > 0 && (
-          <div className="flex flex-wrap gap-2">
-            {presets.map((p) => (
-              <span
-                key={p}
-                className="flex items-center gap-1 text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded-full"
-              >
-                {p}
-                <X
-                  className="w-3 h-3 cursor-pointer"
-                  onClick={() => removeFloatingPreset(p)}
-                />
-              </span>
-            ))}
-          </div>
-        )}
-
-        <Input
-          placeholder="Add presets (press Enter)..."
-          value={presetInput}
-          onChange={(e) => setPresetInput(e.target.value)}
-          onKeyDown={handlePresetKeyDown}
-        />
-
-        {/* Output card */}
-        {showOutput && (
-          <Card className="rounded-2xl shadow-md">
-            <CardContent className="space-y-3 p-4">
-              {/* Source area */}
-              <div className="flex items-center justify-between flex-wrap gap-2">
-                <div className="flex items-center gap-2">
-                  <p className="text-sm text-gray-500">Source (editable)</p>
-
-                  {!hideSource && appliedPresets.length > 0 && (
-                    <div className="flex gap-1 flex-wrap">
-                      {appliedPresets.map((preset) => (
-                        <span
-                          key={preset}
-                          className="flex items-center gap-1 text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded-full"
-                        >
-                          {preset}
-                          <X
-                            className="w-3 h-3 cursor-pointer"
-                            onClick={() => removeAppliedPreset(preset)}
-                          />
-                        </span>
-                      ))}
-                    </div>
-                  )}
-                </div>
-
-                <div className="flex items-center gap-2">
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    className="text-xs"
-                    onClick={saveToMemory}
-                  >
-                    <Plus size={14} className="mr-1" />
-                    Add to Memory
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    className="text-xs"
-                    onClick={async () => {
-                      if (!sourceContent.trim()) return;
-                      setLoading(true);
-                      await translate(
-                        sourceContent,
-                        true,
-                        true,
-                        appliedPresets
-                      );
-                      setLoading(false);
-                    }}
-                    disabled={loading}
-                  >
-                    {loading ? (
-                      <Loader2 size={14} className="animate-spin mr-1" />
-                    ) : (
-                      <RefreshCcw size={14} className="mr-1" />
-                    )}
-                    Regenerate
-                  </Button>
-                  {/* Memories button in source: green enabled if memoryBacked true */}
-                  <Button
-                    size="sm"
-                    className={`text-xs ${
-                      memoryBacked
-                        ? "bg-green-100 text-green-700 hover:bg-green-200"
-                        : "bg-gray-100 text-gray-400 cursor-not-allowed"
-                    }`}
-                    disabled={!memoryBacked}
-                    onClick={() => memoryBacked && setShowMemoriesModal(true)}
-                  >
-                    Memories
-                  </Button>
-
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => setHideSource(!hideSource)}
-                  >
-                    {hideSource ? <EyeOff size={18} /> : <Eye size={18} />}
-                  </Button>
-                </div>
-              </div>
-
-              {!hideSource && (
-                <Textarea
-                  value={loading ? "Translating..." : sourceContent}
-                  onChange={(e) => setSourceContent(e.target.value)}
-                  disabled={loading}
-                />
-              )}
-
-              <Separator />
-
-              {/* Target area */}
-              <div className="space-y-2">
-                <div className="flex items-center justify-between flex-wrap gap-2">
-                  <div className="flex items-center gap-2">
-                    <p className="text-sm text-gray-500">Target (translated)</p>
-
-                    {/* Presets applied badge */}
-                    <span
-                      className={`text-xs px-2 py-1 rounded-full ${
-                        appliedPresets.length > 0
-                          ? "bg-green-100 text-green-700"
-                          : "bg-gray-100 text-gray-400"
-                      }`}
-                    >
-                      Presets applied
-                    </span>
-
-                    {/* Memories badge (always visible on target, green if memoryBacked) */}
-                    <span
-                      className={`text-xs px-2 py-1 rounded-full ${
-                        memoryBacked
-                          ? "bg-green-100 text-green-700"
-                          : "bg-gray-100 text-gray-400"
-                      }`}
-                    >
-                      {memoryBacked ? "Memories used" : "Based on memories"}
-                    </span>
-                  </div>
-
-                  <div className="flex items-center gap-2">
-                    <label className="text-xs text-gray-400">Font size:</label>
-                    <input
-                      type="range"
-                      min={14}
-                      max={28}
-                      value={targetFontSize}
-                      onChange={(e) =>
-                        setTargetFontSize(Number(e.target.value))
-                      }
-                    />
-                  </div>
-                </div>
-
-                <div
-                  className="p-4 bg-gray-50 rounded-xl text-gray-800 min-h-[50px] flex items-start"
-                  style={{ fontSize: targetFontSize }}
-                >
-                  {loading ? (
-                    <div className="flex items-center gap-2 text-gray-400">
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                      Translating...
-                    </div>
-                  ) : (
-                    <div>{targetContent}</div>
-                  )}
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        )}
+        <Select value={target} onValueChange={setTarget}>
+          <SelectTrigger className="w-[150px]">
+            <SelectValue placeholder="To" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="english">English</SelectItem>
+            <SelectItem value="french">French</SelectItem>
+            <SelectItem value="spanish">Spanish</SelectItem>
+            <SelectItem value="german">German</SelectItem>
+            <SelectItem value="chinese">Chinese</SelectItem>
+          </SelectContent>
+        </Select>
       </div>
 
-      {/* Memories modal (opened from source Memories button) */}
+      {source === target && source !== "" && target !== "" && (
+        <p className="text-sm text-yellow-700">
+          ⚠️ You are trying to translate to your own language, and the
+          translation may not be exact.
+        </p>
+      )}
+
+      {/* Input Box */}
+      <div className="flex gap-2">
+        <Input
+          placeholder="Type your message..."
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+          onKeyDown={(e) => e.key === "Enter" && handleSend()}
+        />
+        <Button onClick={handleSend} disabled={loading || !input.trim()}>
+          {loading ? (
+            <Loader2 className="w-4 h-4 animate-spin mr-2" />
+          ) : (
+            <Send className="w-5 h-5" />
+          )}
+        </Button>
+      </div>
+
+      {/* Floating preset chips */}
+      {presets.length > 0 && (
+        <div className="flex flex-wrap gap-2">
+          {presets.map((p) => (
+            <span
+              key={p}
+              className="flex items-center gap-1 text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded-full"
+            >
+              {p}
+              <X
+                className="w-3 h-3 cursor-pointer"
+                onClick={() => removeFloatingPreset(p)}
+              />
+            </span>
+          ))}
+        </div>
+      )}
+
+      <Input
+        placeholder="Add presets (press Enter)..."
+        value={presetInput}
+        onChange={(e) => setPresetInput(e.target.value)}
+        onKeyDown={handlePresetKeyDown}
+      />
+
+      {/* Output card (always visible) */}
+      <Card className="rounded-2xl shadow-md">
+        <CardContent className="space-y-3 p-4">
+          {/* Source */}
+          <div className="flex items-center justify-between flex-wrap gap-2">
+            <div className="flex items-center gap-2">
+              <p className="text-sm text-gray-500">Source (editable)</p>
+              {!hideSource && appliedPresets.length > 0 && (
+                <div className="flex gap-1 flex-wrap">
+                  {appliedPresets.map((preset) => (
+                    <span
+                      key={preset}
+                      className="flex items-center gap-1 text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded-full"
+                    >
+                      {preset}
+                      <X
+                        className="w-3 h-3 cursor-pointer"
+                        onClick={() => removeAppliedPreset(preset)}
+                      />
+                    </span>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div className="flex items-center gap-2">
+              <Button
+                size="sm"
+                variant="outline"
+                className="text-xs"
+                onClick={saveToMemory}
+                disabled={!sourceContent.trim()}
+              >
+                <Plus size={14} className="mr-1" />
+                Add to Memory
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                className="text-xs"
+                onClick={async () => {
+                  setLoading(true);
+                  await translate(sourceContent, true, true, appliedPresets);
+                  setLoading(false);
+                }}
+                disabled={!sourceContent.trim()}
+              >
+                {loading ? (
+                  <Loader2 size={14} className="animate-spin mr-1" />
+                ) : (
+                  <RefreshCcw size={14} className="mr-1" />
+                )}
+                Regenerate
+              </Button>
+              <Button
+                size="sm"
+                className={`text-xs ${
+                  memoryBacked
+                    ? "bg-green-100 text-green-700 hover:bg-green-200"
+                    : "bg-gray-100 text-gray-400 cursor-not-allowed"
+                }`}
+                disabled={!memoryBacked}
+                onClick={() => memoryBacked && setShowMemoriesModal(true)}
+              >
+                Memories
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setHideSource(!hideSource)}
+              >
+                {hideSource ? <EyeOff size={18} /> : <Eye size={18} />}
+              </Button>
+            </div>
+          </div>
+
+          {!hideSource && (
+            <Textarea
+              value={showOutput ? sourceContent : ""}
+              onChange={(e) => setSourceContent(e.target.value)}
+              disabled={loading}
+            />
+          )}
+
+          <Separator />
+
+          {/* Target */}
+          <div className="space-y-2">
+            <div className="flex items-center justify-between flex-wrap gap-2">
+              <div className="flex items-center gap-2">
+                <p className="text-sm text-gray-500">Target (translated)</p>
+                <span
+                  className={`text-xs px-2 py-1 rounded-full ${
+                    appliedPresets.length > 0
+                      ? "bg-green-100 text-green-700"
+                      : "bg-gray-100 text-gray-400"
+                  }`}
+                >
+                  Presets applied
+                </span>
+                <span
+                  className={`text-xs px-2 py-1 rounded-full ${
+                    memoryBacked
+                      ? "bg-green-100 text-green-700"
+                      : "bg-gray-100 text-gray-400"
+                  }`}
+                >
+                  {memoryBacked ? "Memories used" : "Based on memories"}
+                </span>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <label className="text-xs text-gray-400">Font size:</label>
+                <input
+                  type="range"
+                  min={14}
+                  max={28}
+                  value={targetFontSize}
+                  onChange={(e) => setTargetFontSize(Number(e.target.value))}
+                />
+              </div>
+            </div>
+
+            <div
+              className="p-4 bg-gray-50 rounded-xl text-gray-800 min-h-[50px] flex items-start"
+              style={{ fontSize: targetFontSize }}
+            >
+              {loading ? (
+                <div className="flex items-center gap-2 text-gray-400">
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  Translating...
+                </div>
+              ) : (
+                <div>{showOutput ? targetContent : ""}</div>
+              )}
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Memories modal */}
       {showMemoriesModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center">
           <div
@@ -584,6 +562,6 @@ export function SlateTab() {
           </div>
         </div>
       )}
-    </>
+    </div>
   );
 }

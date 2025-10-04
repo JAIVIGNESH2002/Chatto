@@ -22,8 +22,8 @@ export default function GuestChatPage({
   params: Promise<{ sessionId: string }>;
 }) {
   const { sessionId } = React.use(params);
-
   const userId = "guest";
+
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
   const [suggestions, setSuggestions] = useState<string[]>([]);
@@ -68,12 +68,28 @@ export default function GuestChatPage({
   };
 
   return (
-    <div className="p-4 pb-24 flex flex-col h-screen">
-      <div className="flex-1 overflow-y-auto mb-2 space-y-2">
+    <div className="flex flex-col h-screen bg-gray-50">
+      {/* Gradient header */}
+      <header className="bg-gradient-to-r from-purple-600 to-indigo-600 text-white p-4 shadow-md flex flex-col">
+        <h1 className="text-2xl font-bold tracking-wide">Chatto</h1>
+        <p className="text-sm text-white/80 mt-1">
+          Welcome to your guest chat session! Your messages will be translated
+          in real-time.
+        </p>
+      </header>
+
+      {/* Chat area */}
+      <div className="flex-1 overflow-y-auto p-4 space-y-3">
+        {messages.length === 0 && (
+          <p className="text-gray-400 text-center mt-10">
+            Start the conversation by typing a message below 👇
+          </p>
+        )}
+
         {messages.map((m, idx) => (
           <div
             key={idx}
-            className={`p-2 rounded-lg break-words max-w-[80%] ${
+            className={`p-3 rounded-lg break-words max-w-[80%] ${
               m.from === "guest"
                 ? "bg-blue-100 self-end ml-auto"
                 : "bg-green-100 self-start mr-auto"
@@ -87,9 +103,9 @@ export default function GuestChatPage({
         ))}
       </div>
 
-      {/* Suggestions */}
+      {/* Suggestions right above input, aligned to the right */}
       {suggestions.length > 0 && (
-        <div className="flex flex-wrap gap-2 mb-2">
+        <div className="flex justify-end flex-wrap gap-2 mb-2 mr-6">
           {suggestions.map((s, idx) => (
             <button
               key={idx}
@@ -103,7 +119,7 @@ export default function GuestChatPage({
       )}
 
       {/* Input fixed at bottom */}
-      <div className="flex gap-2">
+      <div className="flex gap-2 p-4 border-t border-gray-200 bg-white">
         <Input
           placeholder="Type a message..."
           value={input}

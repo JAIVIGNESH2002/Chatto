@@ -6,26 +6,25 @@ import { ChatTab } from "@/components/tabs/ChatTab";
 import { SlateTab } from "@/components/tabs/SlateTab";
 import { MemoriesTab } from "@/components/tabs/MemoriesTab";
 import BottomNav from "@/components/ui/BottomNav";
+import { useUser } from "@clerk/nextjs";
 
 export default function Home() {
   const [activeTab, setActiveTab] = useState<"slate" | "chat" | "memory">(
     "chat"
   );
-  const userId = "123";
-
+  const { user, isSignedIn } = useUser();
+  const userId = user?.id || "";
   return (
     <div className="h-full flex flex-col">
       {/* Main content */}
-      <div className="flex-1 overflow-hidden">
+      <div className="flex-1">
         <div className={activeTab === "chat" ? "block" : "hidden"}>
           <ChatTab />
         </div>
         <div className={activeTab === "slate" ? "block" : "hidden"}>
           <SlateTab />
         </div>
-        <div className={activeTab === "memory" ? "block" : "hidden"}>
-          <MemoriesTab userId={userId} />
-        </div>
+        {activeTab === "memory" && <MemoriesTab userId={userId} />}
       </div>
       <BottomNav activeTab={activeTab} setActiveTab={setActiveTab} />
     </div>

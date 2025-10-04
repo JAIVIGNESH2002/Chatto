@@ -10,6 +10,7 @@ from pydantic import BaseModel
 router = APIRouter()
 
 class SlateTranslateRequest(BaseModel):
+    user_id:str
     text: str
     source_lang: str
     target_lang: str
@@ -32,7 +33,7 @@ def translate_slate(request: SlateTranslateRequest):
     """
     try:
         result = slate_translate(
-            user_id="123",
+            user_id=request.user_id,
             text=request.text,
             source_lang=request.source_lang,
             target_lang=request.target_lang,
