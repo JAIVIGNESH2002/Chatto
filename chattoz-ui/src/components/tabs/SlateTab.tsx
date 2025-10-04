@@ -121,8 +121,8 @@ function MemoryItem({
 
 export function SlateTab() {
   const [input, setInput] = useState("");
-  const [source, setSource] = useState("en");
-  const [target, setTarget] = useState("ja");
+  const [source, setSource] = useState("english");
+  const [target, setTarget] = useState("spanish");
   const [showOutput, setShowOutput] = useState(false);
   const [hideSource, setHideSource] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -322,9 +322,11 @@ export function SlateTab() {
               <SelectValue placeholder="From" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="en">English</SelectItem>
-              <SelectItem value="ja">Japanese</SelectItem>
-              <SelectItem value="es">Spanish</SelectItem>
+              <SelectItem value="english">English</SelectItem>
+              <SelectItem value="french">French</SelectItem>
+              <SelectItem value="spanish">Spanish</SelectItem>
+              <SelectItem value="german">German</SelectItem>
+              <SelectItem value="chinese">Chinese</SelectItem>
             </SelectContent>
           </Select>
 
@@ -333,13 +335,21 @@ export function SlateTab() {
               <SelectValue placeholder="To" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="ja">Japanese</SelectItem>
-              <SelectItem value="en">English</SelectItem>
-              <SelectItem value="es">Spanish</SelectItem>
+              <SelectItem value="english">English</SelectItem>
+              <SelectItem value="french">French</SelectItem>
+              <SelectItem value="spanish">Spanish</SelectItem>
+              <SelectItem value="german">German</SelectItem>
+              <SelectItem value="chinese">Chinese</SelectItem>
             </SelectContent>
           </Select>
         </div>
-
+        {/* Info message if source and target are the same */}
+        {source === target && source !== "" && target !== "" && (
+          <p className="text-sm text-yellow-700">
+            ⚠️ You are trying to translate to your own language, and the
+            translation may not be exact.
+          </p>
+        )}
         {/* Input Box */}
         <div className="flex gap-2">
           <Input

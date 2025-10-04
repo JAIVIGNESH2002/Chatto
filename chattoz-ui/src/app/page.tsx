@@ -1,5 +1,4 @@
 /** @format */
-
 "use client";
 
 import { useState } from "react";
@@ -9,7 +8,7 @@ import { MemoriesTab } from "@/components/tabs/MemoriesTab";
 import BottomNav from "@/components/ui/BottomNav";
 
 export default function Home() {
-  const [activeTab, setActiveTab] = useState<"chat" | "slate" | "memory">(
+  const [activeTab, setActiveTab] = useState<"slate" | "chat" | "memory">(
     "chat"
   );
   const userId = "123";

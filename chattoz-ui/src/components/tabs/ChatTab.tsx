@@ -6,6 +6,13 @@ import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Send, Loader2 } from "lucide-react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "../ui/select";
 
 interface ChatMessage {
   from: string;
@@ -22,8 +29,8 @@ export function ChatTab() {
   const [inviteText, setInviteText] = useState(
     "I would like to chat with you, can you please scan this QR"
   );
-  const [sourceLang, setSourceLang] = useState("en");
-  const [targetLang, setTargetLang] = useState("ja");
+  const [sourceLang, setSourceLang] = useState("english");
+  const [targetLang, setTargetLang] = useState("spanish");
   const [translatedInvite, setTranslatedInvite] = useState("");
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
@@ -118,19 +125,32 @@ export function ChatTab() {
     <div className="p-4 pb-28 flex flex-col h-screen">
       {!sessionId ? (
         <Card className="p-4 rounded-2xl shadow-md space-y-4">
-          <div className="flex gap-2">
-            <Input
-              value={sourceLang}
-              onChange={(e) => setSourceLang(e.target.value)}
-              placeholder="Source Lang"
-              className="w-1/2"
-            />
-            <Input
-              value={targetLang}
-              onChange={(e) => setTargetLang(e.target.value)}
-              placeholder="Target Lang"
-              className="w-1/2"
-            />
+          <div className="flex gap-2 p-2">
+            <Select value={sourceLang} onValueChange={setSourceLang}>
+              <SelectTrigger className="w-[150px]">
+                <SelectValue placeholder="From" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="english">English</SelectItem>
+                <SelectItem value="french">French</SelectItem>
+                <SelectItem value="spanish">Spanish</SelectItem>
+                <SelectItem value="german">German</SelectItem>
+                <SelectItem value="chinese">Chinese</SelectItem>
+              </SelectContent>
+            </Select>
+
+            <Select value={targetLang} onValueChange={setTargetLang}>
+              <SelectTrigger className="w-[150px]">
+                <SelectValue placeholder="To" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="english">English</SelectItem>
+                <SelectItem value="french">French</SelectItem>
+                <SelectItem value="spanish">Spanish</SelectItem>
+                <SelectItem value="german">German</SelectItem>
+                <SelectItem value="chinese">Chinese</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
           <Input
             value={inviteText}

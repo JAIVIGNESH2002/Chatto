@@ -1,17 +1,15 @@
 /** @format */
-
 import { type Metadata } from "next";
 import {
   ClerkProvider,
-  SignInButton,
-  SignUpButton,
   SignedIn,
   SignedOut,
   UserButton,
+  SignIn,
 } from "@clerk/nextjs";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
-import BottomNav from "@/components/ui/BottomNav";
+import AuthPage from "@/components/AuthPage";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -36,26 +34,34 @@ export default function RootLayout({
   const pathname =
     typeof window !== "undefined" ? window.location.pathname : "";
   const isGuestPage = pathname.startsWith("/s/");
+
   return (
     <ClerkProvider>
       <html lang="en">
         <body
           className={`${geistSans.variable} ${geistMono.variable} antialiased`}
         >
-          <header className="flex justify-end items-center p-4 gap-4 h-16">
-            <SignedOut>
-              <SignInButton />
-              <SignUpButton>
-                <button className="bg-[#6c47ff] text-ceramic-white rounded-full font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 cursor-pointer">
-                  Sign Up
-                </button>
-              </SignUpButton>
-            </SignedOut>
+          {/* {!isGuestPage && (
             <SignedIn>
               <UserButton />
             </SignedIn>
-          </header>
-          {children}
+          )} */}
+          {/* Main content */}
+          <SignedIn>
+            <header className="h-16 flex items-center justify-between px-6 bg-gradient-to-r from-purple-600 to-indigo-600 shadow-md">
+              <h1 className="text-xl font-bold text-white tracking-wide">
+                Chatto
+              </h1>
+              <UserButton afterSignOutUrl="/" />
+            </header>
+            <div className="flex flex-col h-screen">
+              <div className="flex-1 overflow-auto">{children}</div>
+            </div>
+          </SignedIn>
+          {/* Sign-in page for guests and signed-out users */}
+          <SignedOut>
+            <AuthPage />
+          </SignedOut>
         </body>
       </html>
     </ClerkProvider>
