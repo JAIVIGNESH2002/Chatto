@@ -2,53 +2,35 @@ import json
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 from services import redis_service, translation_service
 from services.embedding_service import get_embedding
-
 router = APIRouter()
-connections = {}  # session_id -> list of (websocket, role)
+connections = {}
 
 @router.websocket("/ws/{session_id}/{role}/{userId}")
-async def websocket_endpoint(websocket: WebSocket, session_id: str, role: str, userId: str):
+async def websocket_endpoint(websocket: WebSocket, session_id: str, role: str,userId: str):
     await websocket.accept()
 
     if session_id not in connections:
         connections[session_id] = []
     connections[session_id].append((websocket, role))
 
-    # Notify host when guest joins
-    if role == "guest":
-        for conn, conn_role in connections[session_id]:
-            if conn_role == "host":
-                await conn.send_json({"type": "guest_joined"})
-    
     try:
         while True:
             text = await websocket.receive_text()
             data = json.loads(text)
-
-            # Handle guest joined separately
-            if data.get("type") == "guest_joined":
-                print(f"Guest has joined session {session_id}")
-                # Optional: notify host that guest joined
-                for conn, conn_role in connections[session_id]:
-                    if conn_role == "host":
-                        await conn.send_json({"type": "guest_joined"})
-                continue  # skip the rest of the loop
-
-            # Only process chat messages that have "message"
-            if "message" not in data:
-                # Ignore invalid message
-                continue
             chat_message = data["message"]
             mode_info = data["autoModeEnabled"]
             auto_reply = None
-            autoKey = data.get("autoKey")
-
+            # print(f"Auto mode info from backend {mode_info}",flush=True)
+            autoKey = None
+            if(mode_info):
+                print("Extracting key...")
+                autoKey = data["autoKey"]
+                print(f"AutoKey : {autoKey}",flush=True)
             # Lookup session details from Redis
             session = redis_service.get_session(session_id)
             if not session:
                 await websocket.send_text("Invalid or expired session.")
                 break
-
             # Determine translation direction
             if role == "host":
                 source = session["host_language"]
@@ -59,64 +41,75 @@ async def websocket_endpoint(websocket: WebSocket, session_id: str, role: str, u
 
             # Translate & save
             translated = translation_service.translate(chat_message, source, target)
-            redis_service.save_message(session_id, role, chat_message, translated.translated_text, mode_info, autoKey)
-
+            redis_service.save_message(session_id, role, chat_message, translated.translated_text,mode_info,autoKey)
             message = {
                 "from": role,
                 "original": chat_message,
                 "translated": translated.translated_text,
-                "autoModeEnabled": mode_info,
-                "autoKey": autoKey
+                "autoModeEnabled":mode_info,
+                "autoKey":autoKey
             }
-
-            # Retrieve memories for guest if needed
+            print(f"Msg:{message}",flush=True)
             agent_memories = []
             if role != "host":
-                userId = "123"
-                chat_message_host_lang = translated.translated_text
-                print(f"Getting embedding for : {chat_message_host_lang}")
-                query_embedding = get_embedding(chat_message_host_lang)
+                print(f"Retrieving memories of host...")
+                query_embedding = get_embedding(chat_message)
+                # print(f"QE: {query_embedding}",flush=True)
                 relevant_memories = redis_service.get_relevant_memories(userId, query_embedding, top_n=3)
-                print(f"user id:{userId}")
-                print(f"Relevant memories:{relevant_memories}")
                 for memory in relevant_memories:
-                    agent_memories.append(memory["message"])
+                    mem_msg = memory["message"]
+                    agent_memories.append(mem_msg)
+            print(f"Agent memories : {agent_memories}")
 
-            # Auto-reply logic
+
             if role != "host" and mode_info:
+                # print("Automatically replying...")
+                print(f"Autokey : {autoKey}")
                 autoModeMessages = redis_service.get_messages_by_autoKey(session_id, autoKey)
                 chat_history = []
                 for auto_mode_message in autoModeMessages:
-                    m_role = auto_mode_message["role"]
+                    role = auto_mode_message["role"]
                     original = auto_mode_message.get("original", "")
-                    translated_text = auto_mode_message.get("translated", "")
-                    line = f"{m_role}: {original if m_role=='host' else translated_text}"
-                    chat_history.append(line)
+                    translated = auto_mode_message.get("translated", "")
+                    
+                    if role == "host":
+                        chat_line = f"host: {original}"
+                    else:
+                        chat_line = f"guest: {translated}"
+                    
+                    chat_history.append(chat_line)
+
                 history_text = "\n".join(chat_history)
                 auto_reply_msg = translation_service.auto_reply(agent_memories, history_text)
                 auto_reply = json.loads(auto_reply_msg)
-
                 reply_guest_lang = translation_service.translate(auto_reply.get("reply", ""), target, source)
+                print(f"Guest lang reply {reply_guest_lang}",flush=True)
                 host_reply = {
-                    "from": "host",
-                    "original": auto_reply.get("reply", ""),
-                    "translated": reply_guest_lang.translated_text,
-                    "autoModeEnabled": True,
-                    "autoKey": autoKey
+                "from": "host",
+                "original": auto_reply.get("reply", ""),
+                "translated": reply_guest_lang.translated_text,
+                "autoModeEnabled":True,
+                "autoKey":autoKey
                 }
+                print(f"Auto mode message : {auto_reply}",flush=True)
 
-            # Broadcast to all clients
+            # Broadcast to all clients in the same session
             for conn, conn_role in connections[session_id]:
                 await conn.send_json(message)
-                # Suggestions
-                if conn_role != role:
-                    suggestions = translation_service.generate_suggestions(session_id, conn_role, target, agent_memories)
+                # print(f"Sending message {message}")
+                if conn_role != role:  
+                    suggestions = translation_service.generate_suggestions(session_id,conn_role,target,agent_memories)
                     if suggestions:
-                        await conn.send_json({"type": "suggestions", "suggestions": suggestions})
-                # Auto-reply
-                if mode_info and auto_reply:
+                        await conn.send_json({
+                            "type": "suggestions",
+                            "suggestions": suggestions
+                        })
+                if(mode_info) and auto_reply:
                     if not auto_reply.get("end_chat", False):
+                        print("Auto mode conversation continues...")
                         await conn.send_json(host_reply)
+                    else:
+                        print("Auto mode conversation ended by agent.")
 
     except WebSocketDisconnect:
         connections[session_id].remove((websocket, role))
