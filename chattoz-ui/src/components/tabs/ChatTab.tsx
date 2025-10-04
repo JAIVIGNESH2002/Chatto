@@ -13,6 +13,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "../ui/select";
+import { useUser } from "@clerk/nextjs";
 
 interface ChatMessage {
   from: string;
@@ -23,7 +24,8 @@ interface ChatMessage {
 }
 
 export function ChatTab() {
-  const userId = "123"; // Host userId
+  const { user, isSignedIn } = useUser();
+  const userId = user?.id;
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [qrBase64, setQrBase64] = useState<string | null>(null);
   const [inviteText, setInviteText] = useState(
@@ -50,6 +52,7 @@ export function ChatTab() {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
+            user_id: userId,
             text: inviteText,
             source_lang: sourceLang,
             target_lang: targetLang,
@@ -215,9 +218,9 @@ export function ChatTab() {
             ))}
           </div>
 
-          {/* Suggestions */}
+          {/* Suggestions right above input, aligned to the right */}
           {suggestions.length > 0 && (
-            <div className="flex flex-wrap gap-2 mb-2">
+            <div className="flex justify-end flex-wrap gap-2 mb-2 mr-6">
               {suggestions.map((s, idx) => (
                 <button
                   key={idx}
