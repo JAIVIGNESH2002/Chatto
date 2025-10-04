@@ -7,6 +7,8 @@ from models.translation import TranslationResponse
 from services import redis_service
 import json
 
+from services.embedding_service import get_embedding
+
 client = Cerebras(api_key=CEREBRAS_API_KEY)
 
 
@@ -44,6 +46,230 @@ def translate(text: str, source_lang: str, target_lang: str) -> TranslationRespo
     translated_text = response.choices[0].message.content
     return TranslationResponse(translated_text=translated_text)
 
+# def slate_translate(text: str, source_lang: str, target_lang: str):
+#     slate_translate_schema = {
+#         "type": "object",
+#         "properties": {
+#             "host_language": {
+#                 "type": "string",
+#                 "description": f"The enriched sentence in host language : {source_lang}"
+#             },
+#             "guest_language": {
+#                 "type": "string",
+#                 "description": f"The translated and enriched sentence in guest language : {target_lang}"
+#             }
+#         },
+#         "required": ["host_language", "guest_language"],
+#         "additionalProperties": False
+#     }
+#     response = client.chat.completions.create(
+#         model="llama-3.3-70b",
+#         messages=[
+#             {
+#                 "role": "system",
+#                 "content": (
+#                    f"You are a translation assistant. "
+#                     f"Enrich the input sentence slightly in the host language ({source_lang}). "
+#                     f"Translate it into the guest language ({target_lang}) exactly, without adding extra words. "
+#                     f"Return a JSON object with two fields: host_language (enriched host sentence) and guest_language (translated sentence)."
+
+#                 )
+#             },
+#             {"role": "user", "content": f"Translate this sentence : {text}"}
+#         ],
+#            response_format={
+#             "type": "json_schema",
+#             "json_schema": {
+#                 "name": "auto_reply_schema",
+#                 "strict": True,
+#                 "schema": slate_translate_schema
+#             }
+#         }
+#     )
+#     try:
+#         response = response.choices[0].message.content
+#         if isinstance(response, str):
+#             import json
+#             response = json.loads(response)
+#         return response
+#     except Exception as e:
+#         print(f"Slate translate error: {e}")
+#         return {"host_language": text, "guest_language": text}
+def slate_translate(
+    user_id:str,
+    text: str,
+    source_lang: str,
+    target_lang: str,
+    enrich: bool = True,
+    presets: list[str] | None = None
+):
+    """
+    Translate text with optional enrichment, presets, and memories.
+    Returns host_language, guest_language, and memory_backed flag.
+    """
+    embed_message = get_embedding(text)
+    relevant_memories = redis_service.get_relevant_memories(user_id,embed_message,3)
+    print(f"Relevant memories : {relevant_memories}",flush=True)
+    input_memories = []
+    memories_for_ui = []
+    for memory in relevant_memories:
+        input_memories.append(memory["message"])
+        memories_for_ui.append({
+            "id": memory["id"],
+            "message": memory["message"]
+        })
+    # Ensure safe defaults
+    presets = presets or []
+    memories = input_memories
+
+    # JSON schema for structured output
+    slate_translate_schema = {
+        "type": "object",
+        "properties": {
+            "host_language": {
+                "type": "string",
+                "description": f"Sentence in host language ({source_lang}). Enriched if enrich=True."
+            },
+            "guest_language": {
+                "type": "string",
+                "description": f"Sentence in guest language ({target_lang})."
+            },
+            "memory_backed": {
+                "type": "boolean",
+                "description": "True if relevant memories influenced translation, else False."
+            }
+        },
+        "required": ["host_language", "guest_language", "memory_backed"],
+        "additionalProperties": False
+    }
+
+    # Build system prompt dynamically
+    base_instruction = (
+        f"You are a translation assistant. "
+        f"Translate text from host language : {source_lang} to target language : {target_lang}. "
+    )
+
+    if enrich:
+        base_instruction += (
+            "Enrich the input sentence slightly in the host language (make it clearer, more natural) and then translate the same,"
+            "If you sense any intent in the input sentence, use the provided memories and enrich the sentence, don't add the intent in response."
+        )
+    else:
+        base_instruction += (
+            "Do NOT enrich the host sentence, only return it exactly as provided. "
+        )
+
+    if presets:
+        base_instruction += f"\nUser wants the translation to be : {', '.join(presets)}."
+    if memories:
+        base_instruction += (
+            f"\nHere are some relevant past memories: {', '.join(memories)}. "
+            "If you use them to enrich the translation, set memory_backed=True, else False."
+        )
+    else:
+        base_instruction += "\nIf no memories are provided, always return memory_backed=False."
+
+    # Call model
+    print(f"Base : {base_instruction}",flush=True)
+    print(f"Base : {base_instruction}")
+    response = client.chat.completions.create(
+        model="llama-3.3-70b",
+        messages=[
+            {"role": "system", "content": base_instruction},
+            {"role": "user", "content": f"Translate this sentence: {text}"}
+        ],
+        response_format={
+            "type": "json_schema",
+            "json_schema": {
+                "name": "slate_translate_schema",
+                "strict": True,
+                "schema": slate_translate_schema
+            }
+        }
+    )
+
+    # Parse response safely
+    try:
+        content = response.choices[0].message.content
+        if isinstance(content, str):
+            import json
+            content = json.loads(content)
+
+        # Ensure memory_backed is always present
+        if "memory_backed" not in content:
+            content["memory_backed"] = False
+        else:
+            if content["memory_backed"] is True:
+                content["memories"] = memories_for_ui
+
+        return content
+
+    except Exception as e:
+        print(f"Slate translate error: {e}")
+        return {
+            "host_language": text if not enrich else f"(enriched) {text}",
+            "guest_language": text,
+            "memory_backed": False
+        }
+
+
+# def auto_reply(agent_memories,chat_history):
+#        response = client.chat.completions.create(
+#         model="llama-3.3-70b",
+#         messages=[
+#             {
+#                 "role": "system",
+#                 "content": (
+#                     f"You are automatic conversation agent, You'll be given a history of chat between host and guest, Based on the given chat and the host memories"
+#                     f",give an appopriate reply to guest, it can be a follow up question, a greeting or complement. If you think the conversation is concluded, return end_chat:true."
+#                     f"Host memories:{agent_memories}"
+#                 )
+#             },
+#             {"role": "user", "content": f"{chat_history}"}
+#         ]
+#     )
+
+def auto_reply(agent_memories, chat_history):
+    auto_reply_schema = {
+        "type": "object",
+        "properties": {
+            "reply": {
+                "type": "string",
+                "description": "The agent’s reply to the guest (a follow-up, greeting, or appropriate message)."
+            },
+            "end_chat": {
+                "type": "boolean",
+                "description": "True if the conversation seems concluded, otherwise false."
+            }
+        },
+        "required": ["reply", "end_chat"],
+        "additionalProperties": False
+    }
+
+    response = client.chat.completions.create(
+        model="llama-3.3-70b",
+        messages=[
+            {
+                "role": "system",
+                "content": (
+                    "You are an automatic conversation agent. You'll be given chat history and host memories. "
+                    "Reply appropriately on behalf of host, and indicate whether the conversation has ended."
+                    f"\nHost memories: {agent_memories}"
+                )
+            },
+            {"role": "user", "content": f"Chat history:\n{chat_history}"}
+        ],
+        response_format={
+            "type": "json_schema",
+            "json_schema": {
+                "name": "auto_reply_schema",
+                "strict": True,
+                "schema": auto_reply_schema
+            }
+        }
+    )
+    return response.choices[0].message.content
+
 
 def generate_suggestions(session_id: str,role:str,target_lang:str,agent_memories) -> list[str]:
     history = redis_service.get_recent_messages(session_id, n=4)
@@ -66,7 +292,7 @@ def generate_suggestions(session_id: str,role:str,target_lang:str,agent_memories
         "required": ["chat_suggestions"],
         "additionalProperties": False
     }
-    print(history_text,flush=True)
+    print(f"Generating suggestions for {role}",flush=True)
     if role == 'host':
         suggestion_prompt = f"You are a helpful assistant generating chatting suggestions.Between host and guest. Generate 3 very short, helpful, polite, suitable chat suggesions for the next message from {role} in {target_lang} based on the last message from the guest. Don't add any extra words or explanations, and consider the following information provided by the user to generate suggestion : {agent_memories}"
     else:

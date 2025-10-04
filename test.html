@@ -89,6 +89,7 @@
     <script>
       let ws;
       let autoMode = false;
+      let currentAutoKey = null; // store the active autoKey during auto-mode convo
 
       // Persistent user_id for memory purposes
       let userId = localStorage.getItem("userId");
@@ -116,18 +117,23 @@
             return;
           }
 
+          // if the message contains autoKey info, track it
+          if (data.autoKey) {
+            currentAutoKey = data.autoKey;
+          }
+
           const chat = document.getElementById("chat");
           const div = document.createElement("div");
           div.className = `msg ${data.from}`;
           div.innerHTML = `
-            <span>[${data.from}]</span> 
-            <span class="original">(${data.original})</span> → 
-            <span class="translated">${data.translated}</span>
-            <button class="save-btn" onclick="saveMemory('${data.original.replace(
-              /'/g,
-              "\\'"
-            )}')">💾 Save</button>
-          `;
+        <span>[${data.from}]</span> 
+        <span class="original">(${data.original})</span> → 
+        <span class="translated">${data.translated}</span>
+        <button class="save-btn" onclick="saveMemory('${data.original.replace(
+          /'/g,
+          "\\'"
+        )}')">💾 Save</button>
+      `;
           chat.appendChild(div);
           chat.scrollTop = chat.scrollHeight;
         };
@@ -143,14 +149,21 @@
         if (!msg) return;
 
         let payload = { message: msg };
-
         const role = document.getElementById("role").value;
+
         if (role === "host" && autoMode) {
-          payload.autoKey = "auto-" + Date.now();
+          // host starts a new auto conversation → generate new autoKey
+          currentAutoKey = "auto-" + Date.now();
+          payload.autoKey = currentAutoKey;
+          payload.autoModeEnabled = true;
+        } else if (role === "guest" && currentAutoKey) {
+          // guest reply inside auto-mode → re-use the same autoKey
+          payload.autoKey = currentAutoKey;
           payload.autoModeEnabled = true;
         } else {
           payload.autoModeEnabled = false;
         }
+
         ws.send(JSON.stringify(payload));
         input.value = "";
         clearSuggestions();
@@ -198,10 +211,14 @@
 
       function toggleAutoMode() {
         autoMode = !autoMode;
+        if (!autoMode) {
+          currentAutoKey = null; // reset autoKey when auto-mode ends
+        }
         document.getElementById("autoModeBtn").innerText = autoMode
           ? "🚀 Auto Mode: ON"
           : "🚀 Auto Mode: OFF";
       }
+
       function loadMemories() {
         fetch(`http://localhost:8000/api/v1/memory/${userId}`)
           .then((res) => res.json())
@@ -217,9 +234,7 @@
             const list = document.createElement("ul");
             data.memories.forEach((mem) => {
               const li = document.createElement("li");
-              li.innerHTML = `
-            <b>Message:</b> ${mem || ""} <br/>
-          `;
+              li.innerHTML = `<b>Message:</b> ${mem || ""} <br/>`;
               li.style.marginBottom = "8px";
               list.appendChild(li);
             });
@@ -228,6 +243,7 @@
           })
           .catch((err) => console.error("Error loading memories:", err));
       }
+
       // Initialize role state on page load
       toggleAutoBtn();
       loadMemories();
