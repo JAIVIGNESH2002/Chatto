@@ -24,9 +24,9 @@ services:
     depends_on:
       - redis
     environment:
-      REDIS_HOST: "rediss://red-d3h1ut63jp1c73f5ov50:4xrT4fSymgZkyBQboe5B5LXB7KCZEtIl@oregon-keyvalue.render.com:6379"
+      REDIS_HOST: "REDIS"
       REDIS_PORT: 6379
-      SESSION_TTL_SECONDS: 43200 # 12 hours
+      SESSION_TTL_SECONDS: 43200
 
 volumes:
   redis_data:
