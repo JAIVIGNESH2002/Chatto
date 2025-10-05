@@ -18,8 +18,9 @@ client = Cerebras(api_key=CEREBRAS_API_KEY)
 #     embedding = [float(x) for x in content.split(",") if x.strip()]
 #     return embedding
 
+
 # Load once at startup
-_model = SentenceTransformer("all-MiniLM-L6-v2")  # small, fast, 384-dim
+_model = SentenceTransformer("all-MiniLM-L6-v2")
 
 def get_embedding(text: str) -> list[float]:
     """

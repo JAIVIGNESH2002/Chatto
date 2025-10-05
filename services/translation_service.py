@@ -11,8 +11,6 @@ from services.embedding_service import get_embedding
 
 client = Cerebras(api_key=CEREBRAS_API_KEY)
 
-
-
 def get_contextual_memory(text: str):
     response = client.chat.completions.create(
         model="llama3.1-8b",
@@ -46,55 +44,6 @@ def translate(text: str, source_lang: str, target_lang: str) -> TranslationRespo
     translated_text = response.choices[0].message.content
     return TranslationResponse(translated_text=translated_text)
 
-# def slate_translate(text: str, source_lang: str, target_lang: str):
-#     slate_translate_schema = {
-#         "type": "object",
-#         "properties": {
-#             "host_language": {
-#                 "type": "string",
-#                 "description": f"The enriched sentence in host language : {source_lang}"
-#             },
-#             "guest_language": {
-#                 "type": "string",
-#                 "description": f"The translated and enriched sentence in guest language : {target_lang}"
-#             }
-#         },
-#         "required": ["host_language", "guest_language"],
-#         "additionalProperties": False
-#     }
-#     response = client.chat.completions.create(
-#         model="llama-3.3-70b",
-#         messages=[
-#             {
-#                 "role": "system",
-#                 "content": (
-#                    f"You are a translation assistant. "
-#                     f"Enrich the input sentence slightly in the host language ({source_lang}). "
-#                     f"Translate it into the guest language ({target_lang}) exactly, without adding extra words. "
-#                     f"Return a JSON object with two fields: host_language (enriched host sentence) and guest_language (translated sentence)."
-
-#                 )
-#             },
-#             {"role": "user", "content": f"Translate this sentence : {text}"}
-#         ],
-#            response_format={
-#             "type": "json_schema",
-#             "json_schema": {
-#                 "name": "auto_reply_schema",
-#                 "strict": True,
-#                 "schema": slate_translate_schema
-#             }
-#         }
-#     )
-#     try:
-#         response = response.choices[0].message.content
-#         if isinstance(response, str):
-#             import json
-#             response = json.loads(response)
-#         return response
-#     except Exception as e:
-#         print(f"Slate translate error: {e}")
-#         return {"host_language": text, "guest_language": text}
 def slate_translate(
     user_id:str,
     text: str,
