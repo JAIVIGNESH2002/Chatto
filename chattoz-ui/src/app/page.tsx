@@ -7,6 +7,7 @@ import { SlateTab } from "@/components/tabs/SlateTab";
 import { MemoriesTab } from "@/components/tabs/MemoriesTab";
 import BottomNav from "@/components/ui/BottomNav";
 import { useUser } from "@clerk/nextjs";
+import { Toaster } from "sonner";
 
 export default function Home() {
   const [activeTab, setActiveTab] = useState<"slate" | "chat" | "memory">(
@@ -17,6 +18,7 @@ export default function Home() {
   return (
     <div className="h-full flex flex-col">
       {/* Main content */}
+      <Toaster position="top-right" />
       <div className="flex-1">
         <div className={activeTab === "chat" ? "block" : "hidden"}>
           <ChatTab />

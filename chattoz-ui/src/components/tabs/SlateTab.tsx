@@ -28,6 +28,8 @@ import {
   RefreshCcw,
 } from "lucide-react";
 import { useUser } from "@clerk/nextjs";
+import { toast } from "sonner";
+import { SonnerDemo } from "../sonner";
 
 interface Memory {
   id: string;
@@ -193,6 +195,9 @@ export function SlateTab() {
       }
     } catch (err) {
       if (!(err instanceof DOMException && err.name === "AbortError")) {
+        toast.error("Couldn't reach servers. Pls try after some time", {
+          description: "Error",
+        });
         setSourceContent("Network or server error");
         setTargetContent("Network or server error");
       }
@@ -252,10 +257,19 @@ export function SlateTab() {
         body: JSON.stringify({ user_id: userId, message: sourceContent }),
       });
       const data = await res.json();
-      if (data.status === "success") alert("Saved to memory ✅");
-      else alert("Failed to save to memory");
+      if (data.status === "success") {
+        toast.success("Saved to memory", {
+          description: "Success",
+        });
+      } else {
+        toast.error("Something went wrong while saving", {
+          description: "Error",
+        });
+      }
     } catch {
-      alert("Error saving memory");
+      toast("Error, couldn't reach backend!", {
+        description: "Error",
+      });
     }
   };
 
