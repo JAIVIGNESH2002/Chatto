@@ -76,7 +76,7 @@ docker-compose up --build
 ```
 
 ### 📱 2. Frontend (NextJs)
-#### Navigate to the backend root:
+#### Navigate to the frontend root:
 ```bash
 cd chattoz-ui
 npm install
