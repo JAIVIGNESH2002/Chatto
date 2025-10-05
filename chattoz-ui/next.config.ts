@@ -6,7 +6,6 @@ const nextConfig: NextConfig = {
   /* config options here */
   typescript: { ignoreBuildErrors: true },
   eslint: { ignoreDuringBuilds: true },
-  appDir: "src/app",
 };
 
 export default nextConfig;
