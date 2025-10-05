@@ -23,11 +23,11 @@ export function MemoriesTab({ userId }: { userId: string }) {
   const [newMemory, setNewMemory] = useState("");
   const [loading, setLoading] = useState(false);
   const [fetching, setFetching] = useState(false);
-
+  const RENDER_API_BASE_URL = "https://chatto-f2pm.onrender.com/api/v1";
   const fetchMemories = async () => {
     try {
       setFetching(true);
-      const res = await fetch(`http://localhost:8000/api/v1/memory/${userId}`);
+      const res = await fetch(`${RENDER_API_BASE_URL}/memory/${userId}`);
       const data = await res.json();
       const parsedMemories: Memory[] = data.memories.map((m: any) => ({
         id: m.id,
@@ -56,7 +56,7 @@ export function MemoriesTab({ userId }: { userId: string }) {
     });
 
     try {
-      const res = await fetch(`http://localhost:8000/api/v1/memory/save`, {
+      const res = await fetch(`${RENDER_API_BASE_URL}/memory/save`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ user_id: userId, message: newMemory }),
@@ -81,7 +81,7 @@ export function MemoriesTab({ userId }: { userId: string }) {
   // ✅ Edit memory (optimistic)
   const saveEdit = async (id: string) => {
     try {
-      const res = await fetch(`http://localhost:8000/api/v1/memory/edit`, {
+      const res = await fetch(`${RENDER_API_BASE_URL}/memory/edit`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -111,7 +111,7 @@ export function MemoriesTab({ userId }: { userId: string }) {
   // ✅ Delete memory (optimistic)
   const handleDelete = async (id: string) => {
     try {
-      const res = await fetch(`http://localhost:8000/api/v1/memory/delete`, {
+      const res = await fetch(`${RENDER_API_BASE_URL}/memory/delete`, {
         method: "DELETE",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ user_id: userId, memory_id: id }),

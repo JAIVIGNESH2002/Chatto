@@ -145,7 +145,7 @@ export function SlateTab() {
   const abortControllerRef = useRef<AbortController | null>(null);
   const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
   const skipAutoRef = useRef(false);
-
+  const RENDER_API_BASE_URL = "https://chatto-f2pm.onrender.com/api/v1";
   const { user, isSignedIn } = useUser();
   const userId = user?.id;
   // --- translate ---
@@ -165,7 +165,7 @@ export function SlateTab() {
 
     setLoading(true);
     try {
-      const res = await fetch("http://localhost:8000/api/v1/slate/translate", {
+      const res = await fetch(`${RENDER_API_BASE_URL}/slate/translate`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -251,7 +251,7 @@ export function SlateTab() {
   const saveToMemory = async () => {
     if (!sourceContent.trim()) return;
     try {
-      const res = await fetch("http://localhost:8000/api/v1/memory/save", {
+      const res = await fetch(`${RENDER_API_BASE_URL}/memory/save`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ user_id: userId, message: sourceContent }),
@@ -275,7 +275,7 @@ export function SlateTab() {
 
   const handleMemoryEdit = async (id: string, newMessage: string) => {
     try {
-      const res = await fetch("http://localhost:8000/api/v1/memory/edit", {
+      const res = await fetch(`${RENDER_API_BASE_URL}/memory/edit`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

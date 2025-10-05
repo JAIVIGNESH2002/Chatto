@@ -41,13 +41,13 @@ export function ChatTab() {
   const [suggestions, setSuggestions] = useState<string[]>([]);
 
   const wsRef = useRef<WebSocket | null>(null);
-
+  const RENDER_API_BASE_URL = "https://chatto-f2pm.onrender.com/api/v1";
   const generateSession = async () => {
     setLoading(true);
     try {
       // Translate invite text
       const translateRes = await fetch(
-        "http://localhost:8000/api/v1/slate/translate",
+        `${RENDER_API_BASE_URL}/slate/translate`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -66,7 +66,7 @@ export function ChatTab() {
       setTranslatedInvite(translateData.guest_language ?? inviteText);
 
       // Create session
-      const res = await fetch("http://localhost:8000/api/v1/sessions", {
+      const res = await fetch(`${RENDER_API_BASE_URL}/sessions`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -98,7 +98,7 @@ export function ChatTab() {
   useEffect(() => {
     if (!sessionId) return;
     const ws = new WebSocket(
-      `ws://localhost:8000/api/v1/ws/${sessionId}/host/${userId}`
+      `ws://${RENDER_API_BASE_URL}/${sessionId}/host/${userId}`
     );
     wsRef.current = ws;
 
@@ -180,14 +180,14 @@ export function ChatTab() {
           )}
           <div className="flex gap-2">
             <Input
-              value={`http://localhost:3000/s/${sessionId}`}
+              value={`${RENDER_API_BASE_URL}/s/${sessionId}`}
               readOnly
               className="flex-1"
             />
             <Button
               onClick={() =>
                 navigator.clipboard.writeText(
-                  `http://localhost:3000/s/${sessionId}`
+                  `${RENDER_API_BASE_URL}/s/${sessionId}`
                 )
               }
             >
