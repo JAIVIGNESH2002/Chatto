@@ -6,4 +6,3 @@ qrcode==7.4.2
 pillow
 cerebras-cloud-sdk
 sentence-transformers
-python-dotenv

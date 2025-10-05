@@ -5,7 +5,6 @@ from typing import Dict, List
 from pydantic import BaseModel
 from fastapi import APIRouter
 from services.redis_service import delete_memory, edit_memory, prepare_memory, save_memory,get_memories
-from config import EMBEDDING_MODEL
 from services.translation_service import get_contextual_memory
 
 router = APIRouter()

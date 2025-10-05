@@ -6,7 +6,8 @@ import json
 import datetime
 from services import embedding_service
 
-r = redis.Redis(host=REDIS_HOST, port=REDIS_PORT, db=0, decode_responses=True)
+# r = redis.Redis(host=REDIS_HOST, port=REDIS_PORT, db=0, decode_responses=True)
+r = redis.from_url(REDIS_HOST)
 
 MEMORY_KEY_PREFIX = "user_memories:"
 
