@@ -65,8 +65,8 @@ export function MemoriesTab({ userId }: { userId: string }) {
       if (data.status === "success") {
         setNewMemory("");
         await fetchMemories(); // refresh enriched memories
-        toast.success("Memory added.", {
-          description: "Success ✅",
+        toast.success("Added to memories.", {
+          description: "Success",
         });
       }
     } catch (err) {
@@ -98,7 +98,7 @@ export function MemoriesTab({ userId }: { userId: string }) {
         setEditingId(null);
         setEditText("");
         toast.success("Memory updated.", {
-          description: "Success ✅",
+          description: "Success",
         });
       }
     } catch {
@@ -120,7 +120,7 @@ export function MemoriesTab({ userId }: { userId: string }) {
       if (data.status === "success") {
         setMemories((prev) => prev.filter((m) => m.id !== id));
         toast.success("Memory deleted.", {
-          description: "Success ✅",
+          description: "Success",
         });
       }
     } catch {
