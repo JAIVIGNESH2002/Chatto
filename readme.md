@@ -20,7 +20,7 @@ It also remembers personal context through the **Memories** feature and offers a
 - Full CRUD support with smooth animations and Sonner toasts.  
 
 ### 🧾 Slate
-- A dedicated workspace for AI-powered interactions.  
+- Express your thoughts in the desired language with the power of Cerebras LLAMA model and Chatto's memories
 - Supports custom translation or semantic assistance.  
 
 ### 🤝 Guest Sessions
@@ -73,3 +73,13 @@ Chatto uses **RAG** to make conversations more personalized and contextual:
 ```bash
 cd docker
 docker-compose up --build
+```
+
+### 📱 2. Frontend (NextJs)
+#### Navigate to the backend root:
+```bash
+cd chattoz-ui
+npm install
+npm run build
+npm start
+```
